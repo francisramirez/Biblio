@@ -1,11 +1,13 @@
-﻿namespace Biblio.Web.Data
+﻿using Biblio.Web.Result;
+
+namespace Biblio.Web.Data
 {
     public interface ICategoriaDao
     {
-        Task<List<Categoria>> GetAllAsync();
-        Task<Categoria> GetByIdAsync(int id);
-        Task AddAsync(Categoria categoria);
-        Task UpdateAsync(Categoria categoria);
+        Task<OperationResult> GetAllAsync();
+        Task<OperationResult> GetByIdAsync(int id);
+        Task<OperationResult> AddAsync(Categoria categoria);
+        Task<OperationResult> UpdateAsync(Categoria categoria);
         
     }
 }

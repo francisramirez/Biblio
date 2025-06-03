@@ -1,5 +1,6 @@
 ﻿
 using Biblio.Web.Exceptions;
+using Biblio.Web.Result;
 using Microsoft.Data.SqlClient;
 namespace Biblio.Web.Data
 {
@@ -17,28 +18,56 @@ namespace Biblio.Web.Data
             _configuration = configuration;
             _logger = logger;
         }
-        public Task<List<Categoria>> GetAllAsync()
+        public Task<OperationResult> GetAllAsync()
         {
-            // Simulate async data retrieval
-            return Task.FromResult(new List<Categoria>());
+            OperationResult Opresult = new OperationResult();
+            try
+            {
+                _logger.LogInformation("Retrieving all categories from the database.");
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
+            return Task.FromResult(Opresult);
         }
-        public Task<Categoria> GetByIdAsync(int id)
+        public Task<OperationResult> GetByIdAsync(int id)
         {
-            // Simulate async data retrieval
-            return Task.FromResult(new Categoria { CategoriaId = id, Nombre = "Sample Category", Estado = true, FechaCreacion = DateTime.Now });
-        }
-        public async Task AddAsync(Categoria categoria)
-        {
+            OperationResult Opresult = new OperationResult();
 
             try
             {
+                _logger.LogInformation($"Retrieving category with ID {id} from the database.");
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
+            return Task.FromResult(Opresult);
+        }
+        public async Task<OperationResult> AddAsync(Categoria categoria)
+        {
+            OperationResult Opresult = new OperationResult();
+
+            try
+            {
+
+                if (categoria == null)
+                    Opresult = OperationResult.Failure("Category cannot be null.");
+
+                if (string.IsNullOrWhiteSpace(categoria!.Nombre))
+                    Opresult = OperationResult.Failure("Category name cannot be empty.");
+
+
                 using (var connection = new SqlConnection(this._connString))
                 {
 
                     using (var command = new SqlCommand("dbo.GuardandoCategoria", connection))
                     {
                         command.CommandType = System.Data.CommandType.StoredProcedure;
-                        command.Parameters.AddWithValue("@Nombre", categoria.Nombre);
+                        command.Parameters.AddWithValue("@Nombre", categoria!.Nombre);
                         command.Parameters.AddWithValue("@Estado", categoria.Estado);
                         command.Parameters.AddWithValue("@FechaCreacion", categoria.FechaCreacion);
 
@@ -55,7 +84,10 @@ namespace Biblio.Web.Data
                         var result = (string)p_result.Value;
 
                         if (result != "Ok")
-                            throw new CategoriaException(result);
+                            Opresult = OperationResult.Failure($"Error adding category: {result}");
+                        else
+                            Opresult = OperationResult.Success(result);
+
 
 
                     }
@@ -66,12 +98,55 @@ namespace Biblio.Web.Data
                 _logger.LogError($"Error adding category  {ex.Message}", ex.ToString());
             }
 
+            return Opresult;
+
 
         }
-        public Task UpdateAsync(Categoria categoria)
+        public async Task<OperationResult> UpdateAsync(Categoria categoria)
         {
-            // Simulate async data update
-            return Task.CompletedTask;
+            OperationResult Opresult = new OperationResult();
+            try
+            {
+                if (categoria == null)
+                    Opresult = OperationResult.Failure("Category cannot be null.");
+
+                if (string.IsNullOrWhiteSpace(categoria!.Nombre))
+                    Opresult = OperationResult.Failure("Category name cannot be empty.");
+
+
+                using (var connection = new SqlConnection(this._connString))
+                {
+                    using (var command = new SqlCommand("dbo.ActualizandoCategoria", connection))
+                    {
+                        command.CommandType = System.Data.CommandType.StoredProcedure;
+                        command.Parameters.AddWithValue("@CategoriaId", categoria.CategoriaId);
+                        command.Parameters.AddWithValue("@p_Descripcion", categoria.Nombre);
+                        command.Parameters.AddWithValue("@Estado", categoria.Estado);
+                    
+
+                        SqlParameter p_result = new SqlParameter("@p_Result", System.Data.SqlDbType.VarChar)
+                        {
+                            Direction = System.Data.ParameterDirection.Output
+                        };
+
+                        command.Parameters.Add(p_result);
+                        await connection.OpenAsync();
+                        await command.ExecuteNonQueryAsync();
+                        var result = (string)p_result.Value;
+                        if (result != "Ok")
+                            Opresult = OperationResult.Failure($"Error updating category: {result}");
+                        else
+                            Opresult = OperationResult.Success(result);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+
+                _logger.LogError($"Error updating category {ex.Message}", ex.ToString());
+                Opresult = OperationResult.Failure($"Error updating category {ex.Message}");
+            }
+            return Opresult;
         }
     }
 }
