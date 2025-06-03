@@ -18,19 +18,52 @@ namespace Biblio.Web.Data
             _configuration = configuration;
             _logger = logger;
         }
-        public Task<OperationResult> GetAllAsync()
+        public async Task<OperationResult> GetAllAsync()
         {
             OperationResult Opresult = new OperationResult();
             try
             {
                 _logger.LogInformation("Retrieving all categories from the database.");
+
+                using (var connection = new SqlConnection(this._connString))
+                {
+                    using (var command = new SqlCommand("dbo.ObtenerCategorias", connection))
+                    {
+                        command.CommandType = System.Data.CommandType.StoredProcedure;
+                        await connection.OpenAsync();
+                        var reader = command.ExecuteReader();
+                        if (reader.HasRows)
+                        {
+                            List<Categoria> categorias = new List<Categoria>();
+                            while (reader.Read())
+                            {
+                                Categoria categoria = new Categoria
+                                {
+                                    CategoriaId = reader.GetInt32(0),
+                                    Nombre = reader.GetString(1),
+                                    Estado = reader.GetBoolean(2),
+                                    FechaCreacion = reader.GetDateTime(3)
+                                };
+
+                                categorias.Add(categoria);
+                            }
+                            Opresult = OperationResult.Success("Categories retrieved successfully.", categorias);
+                        }
+                        else
+                        {
+                            Opresult = OperationResult.Failure("No categories found.");
+                        }
+                    }
+                }
+
+
             }
             catch (Exception)
             {
-
-                throw;
+                _logger.LogError("Error retrieving categories from the database.");
+                Opresult = OperationResult.Failure("Error retrieving categories from the database.");
             }
-            return Task.FromResult(Opresult);
+            return Opresult;
         }
         public Task<OperationResult> GetByIdAsync(int id)
         {
@@ -122,7 +155,7 @@ namespace Biblio.Web.Data
                         command.Parameters.AddWithValue("@CategoriaId", categoria.CategoriaId);
                         command.Parameters.AddWithValue("@p_Descripcion", categoria.Nombre);
                         command.Parameters.AddWithValue("@Estado", categoria.Estado);
-                    
+
 
                         SqlParameter p_result = new SqlParameter("@p_Result", System.Data.SqlDbType.VarChar)
                         {
